@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.WindowManager;
 import android.webkit.MimeTypeMap;
+import android.app.Activity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
