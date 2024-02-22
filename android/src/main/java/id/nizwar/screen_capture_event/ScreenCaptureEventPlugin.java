@@ -44,6 +44,16 @@ public class ScreenCaptureEventPlugin implements FlutterPlugin, MethodCallHandle
     private Handler handler;
     private boolean screenRecording = false;
     private long tempSize = 0;
+    private Activity activity;
+    private Activity.ScreenCaptureCallback screenCaptureCallback;
+
+    public void registerScreenCaptureCallback() {
+        activity.registerScreenCaptureCallback(activity.getMainExecutor(), screenCaptureCallback);
+    }
+
+    public void unregisterScreenCaptureCallback() {
+        activity.unregisterScreenCaptureCallback(screenCaptureCallback);
+    }
 
 
     @Override
@@ -72,67 +82,15 @@ public class ScreenCaptureEventPlugin implements FlutterPlugin, MethodCallHandle
                 }
                 break;
             case "watch":
-                handler = new Handler(Looper.getMainLooper());
-                updateScreenRecordStatus();
-
-                if (Build.VERSION.SDK_INT >= 29) {
-                    final List<File> files = new ArrayList<>();
-                    final List<String> paths = new ArrayList<>();
-                    for (Path path : Path.values()) {
-                        files.add(new File(path.getPath()));
-                        paths.add(path.getPath());
-                    }
-                    fileObserver = new FileObserver(files) {
+                if (screenCaptureCallback == null) {
+                   
+                    screenCaptureCallback = new Activity.ScreenCaptureCallback() {
                         @Override
-                        public void onEvent(int event, final String filename) {
-                            if (event == FileObserver.CREATE) {
-                                for (String fullPath : paths) {
-                                    File file = new File(fullPath + filename);
-                                    if (file.exists()) {
-                                        String mime = getMimeType(file.getPath());
-                                        if (mime != null) {
-                                            if (mime.contains("video")) {
-                                                stopAllRecordWatcher();
-                                                setScreenRecordStatus(true);
-                                                updateScreenRecordStatus();
-                                            } else if (mime.contains("image")) {
-                                                handler.post(() -> {
-                                                    channel.invokeMethod("screenshot", file.getPath());
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                        public void onScreenCaptured() {
+                            channel.invokeMethod("screenshot", "screenshot!");
                         }
                     };
-                    fileObserver.startWatching();
-                } else {
-                    for (final Path path : Path.values()) {
-                        fileObserver = new FileObserver(path.getPath()) {
-                            @Override
-                            public void onEvent(int event, final String filename) {
-                                File file = new File(path.getPath() + filename);
-                                if (event == FileObserver.CREATE) {
-                                    if (file.exists()) {
-                                        String mime = getMimeType(file.getPath());
-                                        if (mime != null) {
-                                            if (mime.contains("video")) {
-                                                stopAllRecordWatcher();
-                                                setScreenRecordStatus(true);
-                                                updateScreenRecordStatus();
-                                            } else if (mime.contains("image")) {
-                                                handler.post(() -> {
-                                                    channel.invokeMethod("screenshot", file.getPath());
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        };
-                        fileObserver.startWatching();
-                    }
+                    activityPluginBinding.getActivity().registerScreenCaptureCallback(activityPluginBinding.getActivity().getMainExecutor(), screenCaptureCallback);
                 }
                 break;
             case "dispose":
